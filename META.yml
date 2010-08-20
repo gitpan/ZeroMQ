@@ -3,11 +3,13 @@ abstract: 'A ZeroMQ2 wrapper for Perl'
 author:
   - 'Steffen Mueller, C<< <smueller@cpan.org> >>'
 build_requires:
+  Devel::CheckLib: 0.4
   Devel::PPPort: 3.19
   ExtUtils::MakeMaker: 6.42
   ExtUtils::ParseXS: 2.21
   Test::Requires: 0
 configure_requires:
+  Devel::CheckLib: 0.4
   Devel::PPPort: 3.19
   ExtUtils::MakeMaker: 6.42
 distribution_type: module
@@ -29,4 +31,4 @@ requires:
   perl: 5.8.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.01_02
+version: 0.01_03
