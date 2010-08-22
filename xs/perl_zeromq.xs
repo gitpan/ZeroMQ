@@ -288,6 +288,29 @@ PROTOTYPES: DISABLE
 
 INCLUDE: const-xs.inc
 
+void
+PerlZMQ_version()
+    PREINIT:
+        int major, minor, patch;
+        I32 gimme;
+    PPCODE:
+        gimme = GIMME_V;
+        if (gimme == G_VOID) {
+            /* WTF? you don't want a return value?! */
+            XSRETURN(0);
+        }
+
+        zmq_version(&major, &minor, &patch);
+        if (gimme == G_SCALAR) {
+            XPUSHs( sv_2mortal( newSVpvf( "%d.%d.%d", major, minor, patch ) ) );
+            XSRETURN(1);
+        } else {
+            mXPUSHi( major );
+            mXPUSHi( minor );
+            mXPUSHi( patch );
+            XSRETURN(3);
+        }
+
 int
 PerlZMQ_device(device, insock, outsock)
         int device;
@@ -543,7 +566,8 @@ PerlZMQ_Socket_close(socket)
     CODE:
         RETVAL = zmq_close(socket);
         mg = PerlZMQ_Socket_mg_find(aTHX_ SvRV(ST(0)), &PerlZMQ_Socket_vtbl);
-        mg->mg_ptr = NULL;
+        if (mg != NULL)
+            mg->mg_ptr = NULL;
     OUTPUT:
         RETVAL
 

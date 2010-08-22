@@ -2,7 +2,7 @@ package ZeroMQ;
 use 5.008;
 use strict;
 
-our $VERSION = '0.01_03';
+our $VERSION = '0.02';
 our @ISA = qw(Exporter);
 
 # TODO: keep in sync with docs below and Makefile.PL
@@ -135,19 +135,27 @@ more details on ZeroMQ.
 Loading C<ZeroMQ> will make the L<ZeroMQ::Context>, L<ZeroMQ::Socket>, and 
 L<ZeroMQ::Message> classes available as well.
 
-=head1 FUNCTIONS
+=head1 BASIC USAGE
 
-=head2 device($type, $sock1, $sock2)
+To start using ZeroMQ, you need to create a context object, then as many ZeroMQ::Socket as you need:
 
-=head2 register_read_type($name, \&callback)
+    my $ctxt = ZeroMQ::Context->new;
+    my $socket = $ctxt->socket( ... options );
 
-Register a read callback for a given C<$name>. This is used in C<recv_as()>.
-The callback receives the data received from the socket.
+When sending data, you can either pass a ZeroMQ::Message object or a Perl string. 
 
-=head2 register_write_type($name, \&callback)
+    # the following two send() calls are equivalent
+    my $msg = ZeroMQ::Message->new( "a simple message" );
+    $socket->send( $msg );
+    $socket->send( "a simple message" ); 
 
-Register a write callback for a given C<$name>. This is used in C<send_as()>
-The callback receives the Perl structure given to C<send_as()>
+In most cases using ZeroMQ::Message is redundunt, so you will most likely use the string version.
+
+To receive, simply call C<recv()> on the socket
+
+    my $msg = $socket->recv;
+
+The received message is an instance of ZeroMQ::Message object.
 
 =head1 SERIALIZATION
 
@@ -187,6 +195,29 @@ option, do something like this:
 
 Note that this will have a GLOBAL effect. If you want to change only
 your application, use a name that's different from 'json'.
+
+=head1 FUNCTIONS
+
+=head2 version()
+
+Returns the version of the underlying zeromq library that is being linked.
+In scalar context, returns a dotted version string. In list context,
+returns a 3-element list of the version numbers:
+
+    my $version_string = ZeroMQ::version();
+    my ($major, $minor, $patch) = ZeroMQ::version();
+
+=head2 device($type, $sock1, $sock2)
+
+=head2 register_read_type($name, \&callback)
+
+Register a read callback for a given C<$name>. This is used in C<recv_as()>.
+The callback receives the data received from the socket.
+
+=head2 register_write_type($name, \&callback)
+
+Register a write callback for a given C<$name>. This is used in C<send_as()>
+The callback receives the Perl structure given to C<send_as()>
 
 =head1 EXPORTS
 
