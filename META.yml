@@ -1,12 +1,14 @@
 ---
 abstract: 'A ZeroMQ2 wrapper for Perl'
 author:
-  - 'Steffen Mueller, C<< <smueller@cpan.org> >>'
+  - 'Daisuke Maki <daisuke@endeworks.jp>'
+  - 'Steffen Mueller <smueller@cpan.org>'
 build_requires:
   Devel::CheckLib: 0.4
   Devel::PPPort: 3.19
   ExtUtils::MakeMaker: 6.42
   ExtUtils::ParseXS: 2.21
+  Test::Exception: 0.29
   Test::Requires: 0
 configure_requires:
   Devel::CheckLib: 0.4
@@ -18,6 +20,7 @@ license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
   version: 1.4
+module_name: ZeroMQ
 name: ZeroMQ
 no_index:
   directory:
@@ -31,4 +34,4 @@ requires:
   perl: 5.8.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.02
+version: 0.02_01

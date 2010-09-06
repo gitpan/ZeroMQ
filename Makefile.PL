@@ -1,20 +1,56 @@
-use inc::Module::Install;
+BEGIN {
+    # Okay, so some people wanting to check out the latest and greatest
+    # version from github is getting stuck not knowing what M::I modules
+    # to install. So do the check here
+    eval {
+        require inc::Module::Install;
+        require Module::Install::AuthorTests;
+        require Module::Install::ReadmeFromPod;
+        require Module::Install::XSUtil;
+    };
+    if ($@) {
+        print STDERR <<EOM;
+
+**** Missing Developer Tools! ****
+
+Whoa there, you don't have the required modules to run this Makefile.PL!
+This probably means you cloned the repository from github (if you
+encounter this from a tarball uploaded to CPAN, it's a bug, so please
+report it).
+
+If you are running from a cloned git repository, install the following
+modules first:
+
+    * Module::Install
+    * Module::Install::AuthorTests
+    * Module::Install::ReadmeFromPod
+    * Module::Install::XSUtil
+
+and try again.
+EOM
+        exit 0;
+    }
+    Module::Install->import;
+}
+
 use File::Spec;
 
-{
-    my $file = File::Spec->catfile('xs', 'const-xs.inc');
-    write_constants_file( $file ) if ! -f $file;
-}
-
-{
-    my $file = File::Spec->catfile('xs', 'typemap');
-    write_typemap( $file ) if ! -f $file;
-}
-
 name 'ZeroMQ';
-all_from 'lib/ZeroMQ.pm';
+
+{ # M::I is silly about multiple authors:
+    my $mainpm = 'lib/ZeroMQ.pm';
+    name_from $mainpm;
+    version_from $mainpm;
+    perl_version_from $mainpm;
+    license_from $mainpm;
+    abstract_from $mainpm;
+    readme_from $mainpm;
+    author 'Daisuke Maki <daisuke@endeworks.jp>';
+    author 'Steffen Mueller <smueller@cpan.org>';
+}
 
 test_requires 'Test::Requires';
+test_requires 'Test::Exception' => '0.29';
 recommends 'JSON' => '2.00';
 
 use_ppport;
@@ -25,6 +61,11 @@ cc_src_paths 'xs';
 
 author_tests 'xt';
 WriteAll;
+
+if ($Module::Install::AUTHOR) {
+    write_constants_file( File::Spec->catfile('xs', 'const-xs.inc') );
+    write_typemap( File::Spec->catfile('xs', 'typemap') );
+}
 
 sub write_constants_file {
     my $file = shift;
@@ -69,6 +110,7 @@ sub write_typemap {
         [ 'T_PERLZMQ_CONTEXT', 'PerlZMQ_Context', 'ZeroMQ::Context' ],
         [ 'T_PERLZMQ_SOCKET', 'PerlZMQ_Socket', 'ZeroMQ::Socket' ],
         [ 'T_PERLZMQ_MESSAGE', 'PerlZMQ_Message', 'ZeroMQ::Message' ],
+        [ 'T_PERLZMQ_POLLITEM', 'PerlZMQ_PollItem', 'ZeroMQ::PollItem' ],
     );
 
     open( my $out, '>', $file ) or
