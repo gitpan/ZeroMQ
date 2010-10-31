@@ -15,12 +15,16 @@ SYNOPSIS
             $sock->send($msg);
         }
 
+        # json (if JSON.pm is available)
+        $sock->send_as( json => { foo => "bar" } );
+        my $thing = $sock->recv_as( "json" );
+
         # custom serialization
         ZeroMQ::register_read_type(myformat => sub { ... });
         ZeroMQ::register_write_type(myformat => sub { .. });
 
-        $socket->send_as( myformat => $data ); # serialize using above callback
-        my $thing = $socket->recv_as( "myformat" );
+        $sock->send_as( myformat => $data ); # serialize using above callback
+        my $thing = $sock->recv_as( "myformat" );
 
     See the eg/ directory for full examples.
 
@@ -176,6 +180,12 @@ EXPORTS
     ZMQ_PUSH
     ZMQ_UPSTREAM
     ZMQ_DOWNSTREAM
+    ZMQ_BACKLOG
+    ZMQ_FD
+    ZMQ_LINGER
+    ZMQ_EVENTS
+    ZMQ_RECONNECT_IVL
+    ZMQ_TYPE
     ZMQ_NOBLOCK
     ZMQ_SNDMORE
     ZMQ_HWM
@@ -208,6 +218,10 @@ EXPORTS
 
   miscellaneous
     ZMQ_HAUSNUMERO
+    ZMQ_VERSION
+    ZMQ_VERSION_MAJOR
+    ZMQ_VERSION_MINOR
+    ZMQ_VERSION_PATCH
 
 CAVEATS
     This is an early release. Proceed with caution, please report (or better

@@ -1,11 +1,39 @@
 package ZeroMQ;
 use 5.008;
 use strict;
+use Carp ();
 
-our $VERSION = '0.02_01';
-our @ISA = qw(Exporter);
 
 # TODO: keep in sync with docs below and Makefile.PL
+
+BEGIN {
+    our $VERSION = '0.02_02';
+    our @ISA = qw(Exporter);
+
+    require XSLoader;
+    XSLoader::load('ZeroMQ', $VERSION);
+
+    my @possibly_nonexistent = qw(
+        ZMQ_BACKLOG
+        ZMQ_FD
+        ZMQ_LINGER
+        ZMQ_EVENTS
+        ZMQ_RECONNECT_IVL
+        ZMQ_TYPE
+        ZMQ_VERSION
+        ZMQ_VERSION_MAJOR
+        ZMQ_VERSION_MINOR
+        ZMQ_VERSION_PATCH
+    );
+    my $version = version();
+    foreach my $symbol (@possibly_nonexistent) {
+        if (! __PACKAGE__->can($symbol) ) {
+            no strict 'refs';
+            *{$symbol} = sub { Carp::croak("$symbol is not available in zeromq2 $version") };
+
+        };
+    }
+}
 
 our %EXPORT_TAGS = (
 # socket types
@@ -21,6 +49,12 @@ our %EXPORT_TAGS = (
         ZMQ_PUSH
         ZMQ_UPSTREAM
         ZMQ_DOWNSTREAM
+        ZMQ_BACKLOG
+        ZMQ_FD
+        ZMQ_LINGER
+        ZMQ_EVENTS
+        ZMQ_RECONNECT_IVL
+        ZMQ_TYPE
     ),
 # socket send/recv flags
     qw(
@@ -68,15 +102,22 @@ our %EXPORT_TAGS = (
     qw(
         ZMQ_MSG_MORE
         ZMQ_MSG_SHARED
-    ), ]
+    ),]
 );
 
 $EXPORT_TAGS{all} = [ map { @$_ } values %EXPORT_TAGS ];
-our @EXPORT_OK = ( 'ZMQ_HAUSNUMERO', @{ $EXPORT_TAGS{'all'} } );
+our @EXPORT_OK = (
+    qw(
+        ZMQ_HAUSNUMERO
+        ZMQ_VERSION
+        ZMQ_VERSION_MAJOR
+        ZMQ_VERSION_MINOR
+        ZMQ_VERSION_PATCH
+    ),
+    @{ $EXPORT_TAGS{'all'} }
+);
 our @EXPORT = qw();
 
-require XSLoader;
-XSLoader::load('ZeroMQ', $VERSION);
 
 our %SERIALIZERS;
 our %DESERIALIZERS;
@@ -127,12 +168,16 @@ ZeroMQ - A ZeroMQ2 wrapper for Perl
         $sock->send($msg);
     }
 
+    # json (if JSON.pm is available)
+    $sock->send_as( json => { foo => "bar" } );
+    my $thing = $sock->recv_as( "json" );
+
     # custom serialization
     ZeroMQ::register_read_type(myformat => sub { ... });
     ZeroMQ::register_write_type(myformat => sub { .. });
 
-    $socket->send_as( myformat => $data ); # serialize using above callback
-    my $thing = $socket->recv_as( "myformat" );
+    $sock->send_as( myformat => $data ); # serialize using above callback
+    my $thing = $sock->recv_as( "myformat" );
 
 See the F<eg/> directory for full examples.
 
@@ -304,6 +349,18 @@ The exportable constants are:
 
 =item ZMQ_DOWNSTREAM
 
+=item ZMQ_BACKLOG
+
+=item ZMQ_FD
+
+=item ZMQ_LINGER
+
+=item ZMQ_EVENTS
+
+=item ZMQ_RECONNECT_IVL
+
+=item ZMQ_TYPE
+
 =item ZMQ_NOBLOCK
 
 =item ZMQ_SNDMORE
@@ -373,6 +430,14 @@ The exportable constants are:
 =over 4
 
 =item ZMQ_HAUSNUMERO
+
+=item ZMQ_VERSION
+
+=item ZMQ_VERSION_MAJOR
+
+=item ZMQ_VERSION_MINOR
+
+=item ZMQ_VERSION_PATCH
 
 =back
 

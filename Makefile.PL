@@ -27,6 +27,14 @@ modules first:
     * Module::Install::XSUtil
 
 and try again.
+
+While you're at it, install these modules as they are needed to run
+the tests:
+
+    * Test::Exception (at least 0.29)
+    * Test::Requires
+    * Test::TCP
+
 EOM
         exit 0;
     }
@@ -49,14 +57,22 @@ name 'ZeroMQ';
     author 'Steffen Mueller <smueller@cpan.org>';
 }
 
+test_requires 'Test::TCP';
 test_requires 'Test::Requires';
 test_requires 'Test::Exception' => '0.29';
 recommends 'JSON' => '2.00';
+use_xshelper '-clean';
 
 use_ppport;
 cc_warnings;
-cc_libs 'zmq';
 cc_assert_lib 'zmq';
+cc_libs '-lzmq';
+if ($ENV{INCLUDES}) {
+    cc_include_paths split/\s+/, $ENV{INCLUDES};
+}
+if ($ENV{LIBS}) {
+    cc_libs $ENV{LIBS} . ' -lzmq';
+}
 cc_src_paths 'xs';
 
 author_tests 'xt';
@@ -89,7 +105,7 @@ sub write_constants_file {
 
 
     while (my $ln = <$in>) {
-        if ($ln =~ /^\#define\s+(ZMQ_\S+)\s+/) {
+        if ($ln =~ /^\#define\s+(ZMQ_[A-Z0-9_]+)\s+/) {
             print $out "        $1 = $1\n";
         }
     }

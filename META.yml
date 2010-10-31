@@ -10,6 +10,7 @@ build_requires:
   ExtUtils::ParseXS: 2.21
   Test::Exception: 0.29
   Test::Requires: 0
+  Test::TCP: 0
 configure_requires:
   Devel::CheckLib: 0.4
   Devel::PPPort: 3.19
@@ -34,4 +35,4 @@ requires:
   perl: 5.8.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.02_01
+version: 0.02_02
