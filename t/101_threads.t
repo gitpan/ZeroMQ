@@ -10,6 +10,7 @@ use strict;
 use warnings;
 use threads;
 use Test::More;
+use Test::Exception;
 use ZeroMQ qw/:all/;
 
 {
@@ -18,19 +19,31 @@ use ZeroMQ qw/:all/;
 
     my $main_socket = $cxt->socket(ZMQ_UPSTREAM);
     isa_ok($main_socket, "ZeroMQ::Socket");
+    $main_socket->close;
     my $t = threads->new(sub {
+        note "created thread " . threads->tid;
         my $sock = $cxt->socket( ZMQ_UPSTREAM );
-        $sock->bind("inproc://myPrivateSocket");
+        ok $sock, "created server socket";
+        lives_ok {
+            $sock->bind("inproc://myPrivateSocket");
+        } "bound server socket";
     
         my $client = $cxt->socket(ZMQ_DOWNSTREAM); # sender
-        $client->connect("inproc://myPrivateSocket");
+        ok $client, "created client socket";
+        lives_ok {
+            $client->connect("inproc://myPrivateSocket");
+        } "connected client socket";
 
         $client->send( "Wee Woo" );
         my $data = $sock->recv();
-        my $ok = ($data->data eq "Wee Woo");
+        my $ok = is $data->data, "Wee Woo", "got same message";
         return $ok;
     });
+
+    note "Now waiting for thread to join";
     my $ok = $t->join();
+
+    note "Thread joined";
     ok($ok, "socket and context not defined in subthread");
 }
 
@@ -43,7 +56,7 @@ use ZeroMQ qw/:all/;
 
     my $ok = $t->join();
     ok $ok, "message duped correctly";
-}
+};
 
 done_testing;
 
