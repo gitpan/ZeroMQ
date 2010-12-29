@@ -1,7 +1,14 @@
 package ZeroMQ::Raw;
 use strict;
-use ZeroMQ ();
-use parent qw(Exporter);
+use XSLoader;
+
+BEGIN {
+    our @ISA = qw(Exporter);
+    # XXX it's a hassle, but keep it in sync with ZeroMQ.pm
+    # by loading this here, we can make ZeroMQ::Raw independent
+    # of ZeroMQ while keeping the dist name as ZeroMQ
+    XSLoader::load('ZeroMQ', '0.02_04');
+}
 
 our @EXPORT = qw(
     zmq_init
@@ -13,6 +20,8 @@ our @EXPORT = qw(
     zmq_msg_init_data
     zmq_msg_init_size
     zmq_msg_size
+    zmq_msg_copy
+    zmq_msg_move
 
     zmq_bind
     zmq_close
