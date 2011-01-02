@@ -7,7 +7,7 @@ BEGIN {
     # XXX it's a hassle, but keep it in sync with ZeroMQ.pm
     # by loading this here, we can make ZeroMQ::Raw independent
     # of ZeroMQ while keeping the dist name as ZeroMQ
-    XSLoader::load('ZeroMQ', '0.02_04');
+    XSLoader::load('ZeroMQ', '0.02_05');
 }
 
 our @EXPORT = qw(
@@ -31,6 +31,8 @@ our @EXPORT = qw(
     zmq_send
     zmq_setsockopt
     zmq_socket
+
+    zmq_poll
 );
 
 1;
@@ -59,6 +61,10 @@ ZeroMQ::Raw - Low-level API for ZeroMQ
 
 =head2 zmq_msg_size
 
+=head2 zmq_msg_move
+
+=head2 zmq_msg_copy
+
 =head2 zmq_bind
 
 =head2 zmq_close
@@ -74,5 +80,30 @@ ZeroMQ::Raw - Low-level API for ZeroMQ
 =head2 zmq_setsockopt
 
 =head2 zmq_socket
+
+=head2 zmq_poll( \@list_of_hashrefs, $timeout )
+
+Calls zmq_poll on the given items as specified by @list_of_hashrefs.
+Each element in @list_of_hashrefs should be a hashref containing the following keys:
+
+=over 4
+
+=item socket
+
+Contains the ZeroMQ::Raw::Socket object to poll.
+
+=item fd
+
+Contains the file descriptor to poll. Either one of socket or fd must be specified. If both are specified, 'socket' will take precedence.
+
+=item events
+
+A bitmask of ZMQ_POLLIN, ZMQ_POLLOUT, ZMQ_POLLERR
+
+=item callback
+
+Callback that gets invoked. Takes no arguments.
+
+=back
 
 =cut

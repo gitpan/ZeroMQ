@@ -9,6 +9,20 @@ inline void PerlZMQ_set_bang(pTHX_ int err) {
 }
 
 static int
+PerlZMQ_Raw_Message_mg_dup(pTHX_ MAGIC* const mg, CLONE_PARAMS* const param) {
+    PerlZMQ_Raw_Message *const src = (PerlZMQ_Raw_Message *) mg->mg_ptr;
+    PerlZMQ_Raw_Message *dest;
+
+    PERL_UNUSED_VAR( param );
+ 
+    Newxz( dest, 1, PerlZMQ_Raw_Message );
+    zmq_msg_init( dest );
+    zmq_msg_copy ( dest, src );
+    mg->mg_ptr = (char *) dest;
+    return 0;
+}
+
+static int
 PerlZMQ_Raw_Message_free( pTHX_ SV * const sv, MAGIC *const mg ) {
     PerlZMQ_Raw_Message* const msg = (PerlZMQ_Raw_Message *) mg->mg_ptr;
 #if (PERLZMQ_TRACE > 0)
@@ -47,7 +61,7 @@ static MGVTBL PerlZMQ_Raw_Message_vtbl = { /* for identity */
     NULL, /* clear */
     PerlZMQ_Raw_Message_free, /* free */
     NULL, /* copy */
-    NULL, /* PerlZMQ_Message_mg_dup, dup */
+    PerlZMQ_Raw_Message_mg_dup, /* dup */
 #ifdef MGf_LOCAL
     NULL,  /* local */
 #endif
@@ -208,7 +222,7 @@ MODULE = ZeroMQ    PACKAGE = ZeroMQ::Raw  PREFIX = PerlZMQ_Raw_
 PROTOTYPES: DISABLED
 
 PerlZMQ_Raw_Context *
-PerlZMQ_Raw_zmq_init( nthreads )
+PerlZMQ_Raw_zmq_init( nthreads = 5 )
         int nthreads;
     PREINIT:
         SV *class_sv = sv_2mortal(newSVpvn( "ZeroMQ::Raw::Context", 20 ));
@@ -555,3 +569,97 @@ PerlZMQ_Raw_zmq_setsockopt(sock, option, value)
     OUTPUT:
         RETVAL
 
+int
+PerlZMQ_Raw_zmq_poll( list, timeout = 0 )
+        AV *list;
+        int timeout;
+    PREINIT:
+        I32 list_len;
+        zmq_pollitem_t *pollitems;
+        CV **callbacks;
+        int i;
+    CODE:
+        list_len = av_len( list ) + 1;
+        if (list_len <= 0) {
+            XSRETURN(0);
+        }
+
+        Newxz( pollitems, list_len, zmq_pollitem_t);
+        Newxz( callbacks, list_len, CV *);
+
+        /* list should be a list of hashrefs fd, events, and callbacks */
+        for (i = 0; i < list_len; i++) {
+            SV **svr = av_fetch( list, i, 0 );
+            HV  *elm;
+            if (svr == NULL || ! SvOK(*svr) || ! SvROK(*svr) || SvTYPE(SvRV(*svr)) != SVt_PVHV) {
+                Safefree( pollitems );
+                Safefree( callbacks );
+                croak("Invalid value on index %d", i);
+            }
+            elm = (HV *) SvRV(*svr);
+
+            callbacks[i] = NULL;
+            pollitems[i].revents = 0;
+            pollitems[i].events  = 0;
+            pollitems[i].fd      = 0;
+            pollitems[i].socket  = NULL;
+
+            svr = hv_fetch( elm, "socket", 6, NULL );
+            if (svr != NULL) {
+                MAGIC *mg;
+                if (! SvOK(*svr) || !sv_isobject( *svr) || ! sv_isa(*svr, "ZeroMQ::Raw::Socket")) {
+                    Safefree( pollitems );
+                    Safefree( callbacks );
+                    croak("Invalid 'socket' given for index %d", i);
+                }
+                mg = PerlZMQ_Raw_Socket_mg_find( aTHX_ SvRV(*svr), &PerlZMQ_Raw_Socket_vtbl );
+                pollitems[i].socket = mg->mg_ptr;
+            } else {
+                svr = hv_fetch( elm, "fd", 2, NULL );
+                if (svr == NULL || ! SvOK(*svr) || SvTYPE(*svr) != SVt_IV) {
+                    Safefree( pollitems );
+                    Safefree( callbacks );
+                    croak("Invalid 'fd' given for index %d", i);
+                }
+                pollitems[i].fd = SvIV( *svr );
+            }
+
+            svr = hv_fetch( elm, "events", 6, NULL );
+            if (svr == NULL || ! SvOK(*svr) || SvTYPE(*svr) != SVt_IV) {
+                Safefree( pollitems );
+                Safefree( callbacks );
+                croak("Invalid 'events' given for index %d", i);
+            }
+            pollitems[i].events = SvIV( *svr );
+
+            svr = hv_fetch( elm, "callback", 8, NULL );
+            if (svr == NULL || ! SvOK(*svr) || ! SvROK(*svr) || SvTYPE(SvRV(*svr)) != SVt_PVCV) {
+                Safefree( pollitems );
+                Safefree( callbacks );
+                croak("Invalid 'callback' given for index %d", i);
+            }
+            callbacks[i] = (CV *) SvRV( *svr );
+        }
+
+        /* now call zmq_poll */
+        RETVAL = zmq_poll( pollitems, list_len, timeout );
+        for ( i = 0; i < list_len; i++ ) {
+            if (pollitems[i].revents & pollitems[i].events) {
+                dSP;
+                ENTER;
+                SAVETMPS;
+                PUSHMARK(SP);
+                PUTBACK;
+
+                call_sv( (SV*)callbacks[i], G_SCALAR );
+                SPAGAIN;
+
+                PUTBACK;
+                FREETMPS;
+                LEAVE;
+            }
+        }
+        Safefree(pollitems);
+        Safefree(callbacks);
+    OUTPUT:
+        RETVAL
