@@ -12,9 +12,11 @@ name 'ZeroMQ';
     perl_version_from $mainpm;
     license_from $mainpm;
     abstract_from $mainpm;
-    readme_from $mainpm;
     author 'Daisuke Maki <daisuke@endeworks.jp>';
     author 'Steffen Mueller <smueller@cpan.org>';
+    if ($Module::Install::AUTHOR) {
+        readme_from $mainpm;
+    }
 }
 
 test_requires 'Test::TCP';
@@ -41,8 +43,6 @@ default_test_target
     }
 ;
 author_tests 'xt';
-WriteAll;
 
-if ($Module::Install::AUTHOR) {
-    do 'tools/genfiles.pl';
-}
+do 'tools/genfiles.pl';
+WriteAll;
