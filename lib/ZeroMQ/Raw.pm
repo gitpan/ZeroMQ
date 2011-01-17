@@ -7,7 +7,7 @@ BEGIN {
     # XXX it's a hassle, but keep it in sync with ZeroMQ.pm
     # by loading this here, we can make ZeroMQ::Raw independent
     # of ZeroMQ while keeping the dist name as ZeroMQ
-    XSLoader::load('ZeroMQ', '0.06');
+    XSLoader::load('ZeroMQ', '0.07');
 }
 
 our @EXPORT = qw(
@@ -33,6 +33,8 @@ our @EXPORT = qw(
     zmq_socket
 
     zmq_poll
+
+    zmq_device
 );
 
 1;
@@ -105,5 +107,7 @@ A bitmask of ZMQ_POLLIN, ZMQ_POLLOUT, ZMQ_POLLERR
 Callback that gets invoked. Takes no arguments.
 
 =back
+
+=head2 zmq_device( device, insocket, outsocket )
 
 =cut
