@@ -2,17 +2,23 @@
 #include "perl_zeromq.h"
 #include "xshelper.h"
 
-inline void PerlZMQ_set_bang(pTHX_ int err) {
-    SV *errsv;
-    errsv = get_sv("!", GV_ADD);
-    sv_setsv(errsv, newSViv(err));
+STATIC_INLINE void
+PerlZMQ_set_bang(pTHX_ int err) {
+    SV *errsv = get_sv("!", GV_ADD);
+#if (PERLZMQ_TRACE > 0)
+    warn("Set ERRSV ($!) to %d", err);
+#endif
+    sv_setiv(errsv, err);
 }
 
-static int
+STATIC_INLINE int
 PerlZMQ_Raw_Message_mg_dup(pTHX_ MAGIC* const mg, CLONE_PARAMS* const param) {
     PerlZMQ_Raw_Message *const src = (PerlZMQ_Raw_Message *) mg->mg_ptr;
     PerlZMQ_Raw_Message *dest;
 
+#if (PERLZMQ_TRACE > 0)
+    warn("Message_dup");
+#endif
     PERL_UNUSED_VAR( param );
  
     Newxz( dest, 1, PerlZMQ_Raw_Message );
@@ -22,20 +28,20 @@ PerlZMQ_Raw_Message_mg_dup(pTHX_ MAGIC* const mg, CLONE_PARAMS* const param) {
     return 0;
 }
 
-static int
+STATIC_INLINE int
 PerlZMQ_Raw_Message_mg_free( pTHX_ SV * const sv, MAGIC *const mg ) {
     PerlZMQ_Raw_Message* const msg = (PerlZMQ_Raw_Message *) mg->mg_ptr;
 #if (PERLZMQ_TRACE > 0)
-    warn("Message_free");
+    warn("Message_mg_free for SV = %p, zmq_msg_t = %p", sv, msg);
 #endif
     PERL_UNUSED_VAR(sv);
-    assert( msg != NULL );
-    zmq_msg_close( msg );
-    Safefree( msg );
+    if ( msg != NULL ) {
+        zmq_msg_close( msg );
+    }
     return 1;
 }
 
-static MAGIC*
+STATIC_INLINE MAGIC*
 PerlZMQ_Raw_Message_mg_find(pTHX_ SV* const sv, const MGVTBL* const vtbl){
     MAGIC* mg;
 
@@ -53,7 +59,7 @@ PerlZMQ_Raw_Message_mg_find(pTHX_ SV* const sv, const MGVTBL* const vtbl){
     return NULL; /* not reached */
 }
 
-static int
+STATIC_INLINE int
 PerlZMQ_Raw_Context_mg_free( pTHX_ SV * const sv, MAGIC *const mg ) {
     PerlZMQ_Raw_Context* const ctxt = (PerlZMQ_Raw_Context *) mg->mg_ptr;
     PERL_UNUSED_VAR(sv);
@@ -61,13 +67,16 @@ PerlZMQ_Raw_Context_mg_free( pTHX_ SV * const sv, MAGIC *const mg ) {
 #ifdef USE_ITHREADS
         if ( ctxt->interp == aTHX ) { /* is where I came from */
 #if (PERLZMQ_TRACE > 0) 
-        warn("context free %p", aTHX);
-        warn("mg_obj -> %p", mg->mg_obj);
+        warn("Context_free for context wrapper %p with zmq context %p for thread %p", ctxt, ctxt->ctxt, aTHX);
 #endif
             zmq_term( ctxt->ctxt );
             mg->mg_ptr = NULL;
+            Safefree(ctxt);
         }
 #else
+#if (PERLZMQ_TRACE > 0) 
+        warn("Context_free for zmq context %p", ctxt);
+#endif
         zmq_term( ctxt );
         mg->mg_ptr = NULL;
 #endif
@@ -75,7 +84,7 @@ PerlZMQ_Raw_Context_mg_free( pTHX_ SV * const sv, MAGIC *const mg ) {
     return 1;
 }
 
-static MAGIC*
+STATIC_INLINE MAGIC*
 PerlZMQ_Raw_Context_mg_find(pTHX_ SV* const sv, const MGVTBL* const vtbl){
     MAGIC* mg;
 
@@ -93,28 +102,28 @@ PerlZMQ_Raw_Context_mg_find(pTHX_ SV* const sv, const MGVTBL* const vtbl){
     return NULL; /* not reached */
 }
 
-static int
+STATIC_INLINE int
 PerlZMQ_Raw_Context_mg_dup(pTHX_ MAGIC* const mg, CLONE_PARAMS* const param){
     PERL_UNUSED_VAR(mg);
     PERL_UNUSED_VAR(param);
     return 0;
 }
 
-static int
+STATIC_INLINE int
 PerlZMQ_Raw_Socket_mg_free(pTHX_ SV* const sv, MAGIC* const mg)
 {
     PerlZMQ_Raw_Socket* const sock = (PerlZMQ_Raw_Socket *) mg->mg_ptr;
     PERL_UNUSED_VAR(sv);
     if (sock) {
 #if (PERLZMQ_TRACE > 0)
-    warn("Socket_free");
+    warn("Socket_free %p", sock);
 #endif
         zmq_close( sock );
     }
     return 1;
 }
 
-static int
+STATIC_INLINE int
 PerlZMQ_Raw_Socket_mg_dup(pTHX_ MAGIC* const mg, CLONE_PARAMS* const param){
 #ifdef USE_ITHREADS /* single threaded perl has no "xxx_dup()" APIs */
     mg->mg_ptr = NULL;
@@ -126,7 +135,7 @@ PerlZMQ_Raw_Socket_mg_dup(pTHX_ MAGIC* const mg, CLONE_PARAMS* const param){
     return 0;
 }
 
-static MAGIC*
+STATIC_INLINE MAGIC*
 PerlZMQ_Raw_Socket_mg_find(pTHX_ SV* const sv, const MGVTBL* const vtbl){
     MAGIC* mg;
 
@@ -144,7 +153,7 @@ PerlZMQ_Raw_Socket_mg_find(pTHX_ SV* const sv, const MGVTBL* const vtbl){
     return NULL; /* not reached */
 }
 
-static void 
+STATIC_INLINE void 
 PerlZMQ_free_string(void *data, void *hint) {
     PERL_UNUSED_VAR(hint);
     Safefree( (char *) data );
@@ -198,7 +207,7 @@ PerlZMQ_Raw_zmq_init( nthreads = 5 )
         RETVAL->interp = aTHX;
         RETVAL->ctxt   = zmq_init( nthreads );
 #if (PERLZMQ_TRACE > 0)
-        warn("context create %p", aTHX);
+        warn("context create context wrapper %p with zmq context %p for thread %p", RETVAL, RETVAL->ctxt, aTHX);
 #endif
 #else
         RETVAL = zmq_init( nthreads );
@@ -228,9 +237,15 @@ PerlZMQ_Raw_Message *
 PerlZMQ_Raw_zmq_msg_init()
     PREINIT:
         SV *class_sv = sv_2mortal(newSVpvn( "ZeroMQ::Raw::Message", 20 ));
+        int rc;
     CODE:
         Newxz( RETVAL, 1, PerlZMQ_Raw_Message );
-        zmq_msg_init( RETVAL );
+        rc = zmq_msg_init( RETVAL );
+        if ( rc != 0 ) {
+            SET_BANG;
+            zmq_msg_close( RETVAL );
+            RETVAL = NULL;
+        }
     OUTPUT:
         RETVAL
 
@@ -239,9 +254,15 @@ PerlZMQ_Raw_zmq_msg_init_size( size )
         IV size;
     PREINIT:
         SV *class_sv = sv_2mortal(newSVpvn( "ZeroMQ::Raw::Message", 20 ));
+        int rc;
     CODE: 
         Newxz( RETVAL, 1, PerlZMQ_Raw_Message );
-        zmq_msg_init_size(RETVAL, size);
+        rc = zmq_msg_init_size(RETVAL, size);
+        if ( rc != 0 ) {
+            SET_BANG;
+            zmq_msg_close( RETVAL );
+            RETVAL = NULL;
+        }
     OUTPUT:
         RETVAL
 
@@ -251,18 +272,28 @@ PerlZMQ_Raw_zmq_msg_init_data( data, size = -1)
         IV size;
     PREINIT:
         SV *class_sv = sv_2mortal(newSVpvn( "ZeroMQ::Raw::Message", 20 ));
-        char *sv_data;
-        char *x_data;
         STRLEN x_data_len;
+        char *sv_data = SvPV(data, x_data_len);
+        char *x_data;
+        int rc;
     CODE: 
-        sv_data = SvPV(data, x_data_len);
         if (size >= 0) {
             x_data_len = size;
         }
         Newxz( RETVAL, 1, PerlZMQ_Raw_Message );
         Newxz( x_data, x_data_len, char );
         Copy( sv_data, x_data, x_data_len, char );
-        zmq_msg_init_data(RETVAL, x_data, x_data_len, PerlZMQ_free_string, NULL);
+        rc = zmq_msg_init_data(RETVAL, x_data, x_data_len, PerlZMQ_free_string, NULL);
+        if ( rc != 0 ) {
+            SET_BANG;
+            zmq_msg_close( RETVAL );
+            RETVAL = NULL;
+        }
+#if (PERLZMQ_TRACE > 0)
+        else {
+            warn("zmq_msg_init_data created message %p", RETVAL);
+        }
+#endif
     OUTPUT:
         RETVAL
 
@@ -321,6 +352,9 @@ PerlZMQ_Raw_zmq_socket (ctxt, type)
 #else
         RETVAL = zmq_socket( ctxt, type );
 #endif
+#if (PERLZMQ_TRACE > 0)
+        warn( "created socket %p", RETVAL );
+#endif
     OUTPUT:
         RETVAL
 
@@ -369,18 +403,29 @@ PerlZMQ_Raw_zmq_recv(socket, flags = 0)
     PREINIT:
         SV *class_sv = sv_2mortal(newSVpvn( "ZeroMQ::Raw::Message", 20 ));
         int rv;
+        zmq_msg_t msg;
     CODE:
-        Newxz(RETVAL, 1, PerlZMQ_Raw_Message);
-        zmq_msg_init(RETVAL);
+        RETVAL = NULL;
+        zmq_msg_init(&msg);
+        rv = zmq_recv(socket, &msg, flags);
 #if (PERLZMQ_TRACE > 0)
         warn("zmq recv with flags %d", flags);
+        warn("zmq_recv returned with rv '%d'", rv);
 #endif
-        rv = zmq_recv(socket, RETVAL, flags);
         if (rv != 0) {
             SET_BANG;
-            Safefree(RETVAL);
-            RETVAL = NULL;
-            XSRETURN(0);
+            zmq_msg_close(&msg);
+#if (PERLZMQ_TRACE > 0)
+            warn("zmq_recv got bad status, closing temporary message");
+#endif
+        } else {
+            Newxz(RETVAL, 1, PerlZMQ_Raw_Message);
+            zmq_msg_init(RETVAL);
+            zmq_msg_copy( RETVAL, &msg );
+            zmq_msg_close(&msg);
+#if (PERLZMQ_TRACE > 0)
+            warn("zmq_recv created message %p", RETVAL );
+#endif
         }
     OUTPUT:
         RETVAL
@@ -391,7 +436,6 @@ PerlZMQ_Raw_zmq_send(socket, message, flags = 0)
         SV *message;
         int flags;
     PREINIT:
-        int allocated = 0;
         PerlZMQ_Raw_Message *msg = NULL;
     CODE:
         if (! SvOK(message))
@@ -402,20 +446,23 @@ PerlZMQ_Raw_zmq_send(socket, message, flags = 0)
             if (mg) {
                 msg = (PerlZMQ_Raw_Message *) mg->mg_ptr;
             }
+
+            if (msg == NULL) {
+                croak("Got invalid message object");
+            }
+            
+            RETVAL = zmq_send(socket, msg, flags);
         } else {
             STRLEN data_len;
+            char *x_data;
             char *data = SvPV(message, data_len);
-            Newxz(msg, 1, PerlZMQ_Raw_Message);
-            allocated = 1;
-            zmq_msg_init_size(msg, sizeof(char) * data_len);
-            Copy(data, zmq_msg_data(msg), data_len, void);
-        }
+            zmq_msg_t msg;
 
-        RETVAL = (zmq_send(socket, msg, flags) == 0);
-
-        if ( allocated ) {
-            zmq_msg_close( msg );
-            Safefree( msg );
+            Newxz(x_data, data_len, char);
+            Copy(data, x_data, data_len, char);
+            zmq_msg_init_data(&msg, x_data, data_len, PerlZMQ_free_string, NULL);
+            RETVAL = zmq_send(socket, &msg, flags);
+            zmq_msg_close( &msg ); 
         }
     OUTPUT:
         RETVAL
@@ -544,7 +591,7 @@ PerlZMQ_Raw_zmq_setsockopt(sock, option, value)
 int
 PerlZMQ_Raw_zmq_poll( list, timeout = 0 )
         AV *list;
-        int timeout;
+        long timeout;
     PREINIT:
         I32 list_len;
         zmq_pollitem_t *pollitems;
