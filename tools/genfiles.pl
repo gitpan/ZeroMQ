@@ -1,5 +1,8 @@
 use strict;
+use Config;
 use File::Spec;
+use File::Basename qw(dirname);
+use List::Util qw(first);
 
 write_constants_file( File::Spec->catfile('xs', 'const-xs.inc') );
 write_typemap( File::Spec->catfile('xs', 'typemap') );
@@ -74,7 +77,19 @@ EOM
 sub write_constants_file {
     my $file = shift;
 
-    my $header = $ENV{ZMQ_H} || '/usr/local/include/zmq.h';
+    my $header = first { -f $_ } (
+        $ENV{ZMQ_H}, 
+        map { File::Spec->catfile( $_, 'include', 'zmq.h' ) }
+            ('/usr/local', '/usr', 
+                File::Spec->catdir( dirname($Config{perlpath}),
+                    File::Spec->updir )
+            )
+    );
+
+    if (! $header) {
+        die "Could not find zmq.h anywhere.";
+    }
+    print STDERR " + Using zmq.h from $header\n";
 
     open( my $in, '<', $header ) or
         die "Could not open file $header for reading: $!";
