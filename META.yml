@@ -9,6 +9,7 @@ build_requires:
   ExtUtils::MakeMaker: 6.42
   ExtUtils::ParseXS: 2.21
   Test::Exception: 0.29
+  Test::More: 0.98
   Test::Requires: 0
   Test::TCP: 0
 configure_requires:
@@ -31,9 +32,10 @@ no_index:
 recommends:
   JSON: 2.00
 requires:
+  Task::Weaken: 0
   XSLoader: 0.1
   perl: 5.8.0
 resources:
   license: http://dev.perl.org/licenses/
   repository: http://github.com/lestrrat/ZeroMQ-Perl
-version: 0.09
+version: 0.09_01

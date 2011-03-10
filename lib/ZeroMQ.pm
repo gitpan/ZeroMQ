@@ -1,13 +1,14 @@
 package ZeroMQ;
 use strict;
 BEGIN {
-    our $VERSION = '0.09';
+    our $VERSION = '0.09_01';
     our @ISA = qw(Exporter);
 }
 use ZeroMQ::Raw ();
 use ZeroMQ::Context;
 use ZeroMQ::Socket;
 use ZeroMQ::Message;
+use ZeroMQ::Poller;
 use ZeroMQ::Constants;
 use 5.008;
 use Carp ();
@@ -202,8 +203,8 @@ your application, use a name that's different from 'json'.
 =head1 ASYNCHRONOUS I/O WITH ZEROMQ
 
 By default ZeroMQ comes with its own zmq_poll() mechanism that can handle
-non-blocking sockets. You can use this by creating calling zmq_poll with a list
-of hashrefs:
+non-blocking sockets. You can use this by calling zmq_poll with a list of
+hashrefs:
 
     zmq_poll([
         {

@@ -3,6 +3,8 @@ use strict;
 use Carp();
 use ZeroMQ ();
 
+use Scalar::Util qw(blessed);
+
 BEGIN {
     my @map = qw(
         setsockopt
@@ -12,7 +14,7 @@ BEGIN {
         close
     );
     foreach my $method (@map) {
-        my $code = sprintf <<EOSUB, $method, $method;
+        my $code = << "EOSUB";
             sub $method {
                 my \$self = shift;
                 ZeroMQ::Raw::zmq_$method( \$self->socket, \@_ );
@@ -53,7 +55,7 @@ sub recv {
 sub send {
     my ($self, $msg, $flags) = @_;
 
-    if (eval { $msg->isa( 'ZeroMQ::Message' ) } ) {
+    if (blessed $msg and $msg->isa( 'ZeroMQ::Message' ) ) {
         $msg = $msg->message;
     }
 
@@ -222,7 +224,7 @@ see the documentation for C<bind($endpoint)> above.
 =head2 send
 
 The C<send($msg, $flags)> method queues the given message to be sent to the
-socket. The flags argument is a combination of the flags defined below:
+socket. The flags argument is a combination of the flags defined below.
 
 =head2 send_as( $type, $message, $flags )
 
@@ -248,7 +250,7 @@ The C<my $msg = $sock-E<gt>recv($flags)> method receives a message from
 the socket and returns it as a new C<ZeroMQ::Message> object.
 If there are no messages available on the specified socket
 the C<recv()> method blocks until the request can be satisfied.
-The flags argument is a combination of the flags defined below:
+The flags argument is a combination of the flags defined below.
 
 =head2 recv_as( $type, $flags )
 
@@ -258,7 +260,8 @@ The flags argument is a combination of the flags defined below:
 
 Specifies that the operation should be performed in non-blocking mode.
 If there are no messages available on the specified socket, the
-C<$sock-E<gt>recv(ZMQ_NOBLOCK)> method call shall fail with errno set to EAGAIN.
+C<$sock-E<gt>recv(ZMQ_NOBLOCK)> method call returns C<undef> and sets C<$ERRNO>
+to C<EAGAIN>.
 
 =back
 
@@ -296,7 +299,7 @@ of the options, please refer to the 0MQ manual.
 
 =head2 setsockopt
 
-The C<$sock-E>gt>setsockopt(ZMQ_SOME_OPTION, $value)> method call
+The C<$sock-E<gt>setsockopt(ZMQ_SOME_OPTION, $value)> method call
 sets the specified option to the given value.
 
 The following socket options can be set. For details, please
@@ -333,7 +336,7 @@ refer to the 0MQ manual:
 C<ZeroMQ::Socket> objects aren't thread safe due to the
 underlying library. Therefore, they are currently not cloned when
 a new Perl ithread is spawned. The variables in the new thread
-that contained the context in the parent thread will be a
+that contained the socket in the parent thread will be a
 scalar reference to C<undef> in the new thread.
 This makes the Perl wrapper thread safe (i.e. no segmentation faults).
 

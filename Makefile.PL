@@ -26,6 +26,8 @@ name 'ZeroMQ';
 }
 
 repository 'http://github.com/lestrrat/ZeroMQ-Perl';
+requires 'Task::Weaken';
+test_requires 'Test::More', '0.98';
 test_requires 'Test::TCP';
 test_requires 'Test::Requires';
 test_requires 'Test::Exception' => '0.29';
