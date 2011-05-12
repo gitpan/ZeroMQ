@@ -306,6 +306,7 @@ sub assert_lib {
                 (map { "-L$_" } @libpaths)
             );
         }
+warn "sys_cmd -> @sys_cmd";
         warn "# @sys_cmd\n" if $args{debug};
         my $rv = $args{debug} ? system(@sys_cmd) : _quiet_system(@sys_cmd);
         push @missing, $lib if $rv != 0 || ! -x $exefile;
