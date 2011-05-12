@@ -1,7 +1,7 @@
 package ZeroMQ;
 use strict;
 BEGIN {
-    our $VERSION = '0.13';
+    our $VERSION = '0.14';
     our @ISA = qw(Exporter);
 }
 use ZeroMQ::Raw ();
@@ -95,7 +95,7 @@ ZeroMQ - A ZeroMQ2 wrapper for Perl
 
 =head1 INSTALLATION
 
-If you have want to use libzmq registered with pkg-config:
+If you have libzmq registered with pkg-config:
 
     perl Makefile.PL
     make 
