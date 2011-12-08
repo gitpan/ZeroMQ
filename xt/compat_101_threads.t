@@ -10,7 +10,7 @@ use strict;
 use warnings;
 use threads;
 use Test::More;
-use Test::Fatal;
+use Test::Exception;
 use ZeroMQ qw/:all/;
 
 {
@@ -25,15 +25,15 @@ use ZeroMQ qw/:all/;
         note "created thread " . threads->tid;
         my $sock = $cxt->socket( ZMQ_PAIR );
         ok $sock, "created server socket";
-        is exception {
+        lives_ok {
             $sock->bind("inproc://myPrivateSocket");
-        }, undef, "bound server socket";
+        } "bound server socket";
     
         my $client = $cxt->socket(ZMQ_PAIR); # sender
         ok $client, "created client socket";
-        is exception {
+        lives_ok {
             $client->connect("inproc://myPrivateSocket");
-        }, undef, "connected client socket";
+        } "connected client socket";
 
         $client->send( "Wee Woo" );
         my $data = $sock->recv();

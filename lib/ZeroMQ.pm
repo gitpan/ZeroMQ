@@ -1,7 +1,7 @@
 package ZeroMQ;
 use strict;
 BEGIN {
-    our $VERSION = '0.18';
+    our $VERSION = '0.19';
     our @ISA = qw(Exporter);
 }
 use ZeroMQ::Raw ();
@@ -258,7 +258,7 @@ descriptor, so use that to integrate ZeroMQ and AnyEvent:
     my $socket = zmq_socket( $ctxt, ZMQ_REP );
     my $fh = zmq_getsockopt( $socket, ZMQ_FD );
     my $w; $w = AE::io $fh, 0, sub {
-        while ( my $msg = zmq_recv( $socket, ZMQ_RECVMORE ) ) {
+        while ( my $msg = zmq_recv( $socket, ZMQ_RCVMORE ) ) {
             # do something with $msg;
         }
         undef $w;

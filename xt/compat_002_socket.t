@@ -1,6 +1,6 @@
 use strict;
 use Test::More;
-use Test::Fatal;
+use Test::Exception;
 
 BEGIN {
     use_ok "ZeroMQ::Constants", qw(
@@ -17,22 +17,22 @@ BEGIN {
 }
 
 subtest 'simple creation and destroy' => sub {
-    is exception {
+    lives_ok {
         my $context = zmq_init(1);
         my $socket  = zmq_socket( $context, ZMQ_REP );
         isa_ok $socket, "ZeroMQ::Raw::Socket";
-    }, undef, "socket creation OK";
+    } "code lives";
 
-    is exception {
+    lives_ok {
         my $context = zmq_init(1);
         my $socket  = zmq_socket( $context, ZMQ_REP );
         isa_ok $socket, "ZeroMQ::Raw::Socket";
         zmq_close( $socket );
-    }, undef, "socket create, then zmq_close";
+    } "code lives";
 };
 
 subtest 'connect to a non-existent addr' => sub {
-    is exception {
+    lives_ok {
         my $context = zmq_init(1);
         my $socket  = zmq_socket( $context, ZMQ_PUSH );
 
@@ -49,7 +49,7 @@ subtest 'connect to a non-existent addr' => sub {
         } "connect should fail on a closed socket";
 
         }
-    }, undef, "check for proper handling of closed socket";
+    } "check for proper handling of closed socket";
 };
 
 done_testing;
