@@ -2,7 +2,12 @@
 #include "xshelper.h"
 
 #if (PERLZMQ_TRACE > 0)
-#define PerlZMQ_trace(...) warn(__VA_ARGS__)
+#define PerlZMQ_trace(...) \
+    { \
+        PerlIO_printf(PerlIO_stderr(), "[perlzmq] "); \
+        PerlIO_printf(PerlIO_stderr(), __VA_ARGS__); \
+        PerlIO_printf(PerlIO_stderr(), "\n"); \
+    }
 #else
 #define PerlZMQ_trace(...)
 #endif
@@ -32,12 +37,15 @@ PerlZMQ_Raw_Message_mg_dup(pTHX_ MAGIC* const mg, CLONE_PARAMS* const param) {
 STATIC_INLINE int
 PerlZMQ_Raw_Message_mg_free( pTHX_ SV * const sv, MAGIC *const mg ) {
     PerlZMQ_Raw_Message* const msg = (PerlZMQ_Raw_Message *) mg->mg_ptr;
-    PerlZMQ_trace("Message_mg_free for SV = %p, zmq_msg_t = %p", sv, msg);
+
     PERL_UNUSED_VAR(sv);
+    PerlZMQ_trace( "START mg_free (Message)" );
     if ( msg != NULL ) {
+        PerlZMQ_trace( " + zmq message %p", msg );
         zmq_msg_close( msg );
         Safefree( msg );
     }
+    PerlZMQ_trace( "END mg_free (Message)" );
     return 1;
 }
 
@@ -67,15 +75,16 @@ PerlZMQ_Raw_Context_mg_free( pTHX_ SV * const sv, MAGIC *const mg ) {
     PerlZMQ_trace("START mg_free (Context)");
     if (ctxt != NULL) {
 #ifdef USE_ITHREADS
+        PerlZMQ_trace( " + thread enabled. thread %p", aTHX );
+        PerlZMQ_trace( " + context wrapper %p with zmq context %p", ctxt, ctxt->ctxt );
         if ( ctxt->interp == aTHX ) { /* is where I came from */
-            PerlZMQ_trace("Context_free for context wrapper %p with zmq context %p for thread %p", ctxt, ctxt->ctxt, aTHX);
+            PerlZMQ_trace( " + detected mg_free from creating thread %p, cleaning up", aTHX );
             zmq_term( ctxt->ctxt );
             mg->mg_ptr = NULL;
             Safefree(ctxt);
         }
 #else
         PerlZMQ_trace(" + zmq context %p", ctxt);
-        PerlZMQ_trace(" + are we in global destruction? %s", PL_dirty ? "YES" : "NO");
         zmq_term( ctxt );
         mg->mg_ptr = NULL;
 #endif
@@ -187,6 +196,11 @@ MODULE = ZeroMQ    PACKAGE = ZeroMQ   PREFIX = PerlZMQ_
 
 PROTOTYPES: DISABLED
 
+BOOT:
+    {
+        PerlZMQ_trace( "Booting Perl ZeroMQ" );
+    }
+
 void
 PerlZMQ_version()
     PREINIT:
@@ -224,14 +238,19 @@ PerlZMQ_Raw_zmq_init( nthreads = 5 )
     PREINIT:
         SV *class_sv = sv_2mortal(newSVpvn( "ZeroMQ::Raw::Context", 20 ));
     CODE:
+        PerlZMQ_trace( "START zmq_init" );
 #ifdef USE_ITHREADS
+        PerlZMQ_trace( " + threads enabled, aTHX %p", aTHX );
         Newxz( RETVAL, 1, PerlZMQ_Raw_Context );
         RETVAL->interp = aTHX;
         RETVAL->ctxt   = zmq_init( nthreads );
-        PerlZMQ_trace("context create context wrapper %p with zmq context %p for thread %p", RETVAL, RETVAL->ctxt, aTHX);
+        PerlZMQ_trace( " + created context wrapper %p", RETVAL );
+        PerlZMQ_trace( " + zmq context %p", RETVAL->ctxt );
 #else
+        PerlZMQ_trace( " + non-threaded context");
         RETVAL = zmq_init( nthreads );
 #endif
+        PerlZMQ_trace( "END zmq_init");
     OUTPUT:
         RETVAL
 
@@ -249,6 +268,14 @@ PerlZMQ_Raw_zmq_term( context )
             MAGIC *mg =
                 PerlZMQ_Raw_Context_mg_find( aTHX_ SvRV(ST(0)), &PerlZMQ_Raw_Context_vtbl );
             mg->mg_ptr = NULL;
+        }
+
+        /* mark the original SV's _closed flag as true */
+        {
+            SV *svr = SvRV(ST(0));
+            if (hv_stores( (HV *) svr, "_closed", &PL_sv_yes ) == NULL) {
+                croak("PANIC: Failed to store closed flag on blessed reference");
+            }
         }
     OUTPUT:
         RETVAL
@@ -336,8 +363,22 @@ int
 PerlZMQ_Raw_zmq_msg_close(message)
         PerlZMQ_Raw_Message *message;
     CODE:
+        PerlZMQ_trace("START zmq_msg_close");
         RETVAL = zmq_msg_close(message);
         Safefree(message);
+        {
+            MAGIC *mg =
+                 PerlZMQ_Raw_Message_mg_find( aTHX_ SvRV(ST(0)), &PerlZMQ_Raw_Message_vtbl );
+             mg->mg_ptr = NULL;
+        }
+        /* mark the original SV's _closed flag as true */
+        {
+            SV *svr = SvRV(ST(0));
+            if (hv_stores( (HV *) svr, "_closed", &PL_sv_yes ) == NULL) {
+                croak("PANIC: Failed to store closed flag on blessed reference");
+            }
+        }
+        PerlZMQ_trace("END zmq_msg_close");
     OUTPUT:
         RETVAL
 
@@ -366,17 +407,21 @@ PerlZMQ_Raw_zmq_socket (ctxt, type)
     PREINIT:
         SV *class_sv = sv_2mortal(newSVpvn( "ZeroMQ::Raw::Socket", 19 ));
     CODE:
+        PerlZMQ_trace( "START zmq_socket" );
         Newxz( RETVAL, 1, PerlZMQ_Raw_Socket );
         RETVAL->assoc_ctxt = NULL;
         RETVAL->socket = NULL;
 #ifdef USE_ITHREADS
+        PerlZMQ_trace( " + context wrapper %p, zmq context %p", ctxt, ctxt->ctxt );
         RETVAL->socket = zmq_socket( ctxt->ctxt, type );
 #else
+        PerlZMQ_trace( " + zmq context %p", ctxt );
         RETVAL->socket = zmq_socket( ctxt, type );
 #endif
         RETVAL->assoc_ctxt = ST(0);
         SvREFCNT_inc(RETVAL->assoc_ctxt);
-        PerlZMQ_trace( "zmq_socket: created socket %p for context %p", RETVAL, ctxt );
+        PerlZMQ_trace( " + created socket %p", RETVAL );
+        PerlZMQ_trace( "END zmq_socket" );
     OUTPUT:
         RETVAL
 
@@ -393,6 +438,14 @@ PerlZMQ_Raw_zmq_close(socket)
                  PerlZMQ_Raw_Socket_mg_find( aTHX_ SvRV(ST(0)), &PerlZMQ_Raw_Socket_vtbl );
              mg->mg_ptr = NULL;
         }
+
+        /* mark the original SV's _closed flag as true */
+        {
+            SV *svr = SvRV(ST(0));
+            if (hv_stores( (HV *) svr, "_closed", &PL_sv_yes ) == NULL) {
+                croak("PANIC: Failed to store closed flag on blessed reference");
+            }
+        }
     OUTPUT:
         RETVAL
 
@@ -401,11 +454,13 @@ PerlZMQ_Raw_zmq_connect(socket, addr)
         PerlZMQ_Raw_Socket *socket;
         char *addr;
     CODE:
-        PerlZMQ_trace( "zmq_connect: socket %p", socket );
+        PerlZMQ_trace( "START zmq_connect" );
+        PerlZMQ_trace( " + socket %p", socket );
         RETVAL = zmq_connect( socket->socket, addr );
         if (RETVAL != 0) {
             croak( "%s", zmq_strerror( zmq_errno() ) );
         }
+        PerlZMQ_trace( "END zmq_connect" );
     OUTPUT:
         RETVAL
 
@@ -504,7 +559,12 @@ PerlZMQ_Raw_zmq_getsockopt(sock, option)
         switch(option){
             case ZMQ_TYPE:
             case ZMQ_LINGER:
+#ifdef ZMQ_RECONNECT_IVL
             case ZMQ_RECONNECT_IVL:
+#endif
+#ifdef ZMQ_RECONNECT_IVL_MAX
+            case ZMQ_RECONNECT_IVL_MAX:
+#endif
             case ZMQ_BACKLOG:
             case ZMQ_FD:
                 len = sizeof(i);
@@ -588,7 +648,12 @@ PerlZMQ_Raw_zmq_setsockopt(sock, option, value)
 
             case ZMQ_SWAP:
             case ZMQ_RATE:
-            case ZMQ_RECOVERY_IVL:
+#ifdef ZMQ_RECONNECT_IVL
+            case ZMQ_RECONNECT_IVL:
+#endif
+#ifdef ZMQ_RECONNECT_IVL_MAX
+            case ZMQ_RECONNECT_IVL_MAX:
+#endif
             case ZMQ_MCAST_LOOP:
                 i64 = SvIV(value);
                 RETVAL = zmq_setsockopt(sock->socket, option, &i64, sizeof(int64_t));
