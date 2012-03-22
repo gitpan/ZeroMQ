@@ -5,7 +5,7 @@
       "Steffen Mueller <smueller@cpan.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Module::Install version 1.04, CPAN::Meta::Converter version 2.113640",
+   "generated_by" : "Module::Install version 1.04, CPAN::Meta::Converter version 2.112621",
    "license" : [
       "perl_5"
    ],
@@ -62,6 +62,6 @@
          "url" : "http://github.com/lestrrat/ZeroMQ-Perl"
       }
    },
-   "version" : "0.20",
+   "version" : "0.21",
    "x_module_name" : "ZeroMQ"
 }

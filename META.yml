@@ -39,4 +39,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: http://github.com/lestrrat/ZeroMQ-Perl
-version: 0.20
+version: 0.21
