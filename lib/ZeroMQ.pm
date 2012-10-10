@@ -1,7 +1,7 @@
 package ZeroMQ;
 use strict;
 BEGIN {
-    our $VERSION = '0.21';
+    our $VERSION = '0.22';
     our @ISA = qw(Exporter);
 }
 use ZeroMQ::Raw ();
@@ -41,7 +41,7 @@ __END__
 
 =head1 NAME
 
-ZeroMQ - A ZeroMQ2 wrapper for Perl
+ZeroMQ - A ZeroMQ2 wrapper for Perl (DEPRECATED)
 
 =head1 SYNOPSIS ( HIGH-LEVEL API )
 
@@ -125,6 +125,10 @@ If you want to compile with debugging on:
     perl Makefile.PL -g
 
 =head1 DESCRIPTION
+
+Please note that this module has been DEPRECATED in favor of L<ZMQ::LibZMQ2>,
+L<ZMQ::LibZMQ3>, and L<ZMQ>. see https://github.com/lestrrat/p5-ZMQ and 
+other CPAN pages.
 
 The C<ZeroMQ> module is a wrapper of the 0MQ message passing library for Perl. 
 It's a thin wrapper around the C API. Please read L<http://zeromq.org> for

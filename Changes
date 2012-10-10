@@ -1,5 +1,10 @@
 Changelog for Perl module ZeroMQ.
 
+0.22 Oct 11 2012
+  - Explicitly state that this module is deprecated in favor of
+    ZMQ::LibZMQ2, ZMQ::LibZMQ3, and ZMQ.
+  - No code changes.
+
 0.21 Mar 22 2012
   - Fix threading issues causing a segfault.
     martyn-gillmore/aero did the diagnosis on Win32, but that fix still
