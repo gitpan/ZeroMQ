@@ -1,5 +1,10 @@
 Changelog for Perl module ZeroMQ.
 
+0.23 Oct 16 2012
+  - Oops, ZeroMQ::Raw version was not bumped.
+  - Please consider this a goo timing to move to ZMQ::LibZMQ2, ZMQ::LibZMQ3,
+    and ZMQ
+
 0.22 Oct 11 2012
   - Explicitly state that this module is deprecated in favor of
     ZMQ::LibZMQ2, ZMQ::LibZMQ3, and ZMQ.
